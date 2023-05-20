@@ -1,10 +1,13 @@
 use crate::bitmap::Bitmap;
 use crate::types::*;
 use crate::ray::Ray;
+use crate::hittable::*;
 
 pub struct Raytracer {
     viewport_scale: f64,
     focal_length: f64,
+
+    hittables: Vec<Box<dyn Hittable>>,
 }
 
 impl Raytracer {
@@ -12,10 +15,15 @@ impl Raytracer {
         Self {
             viewport_scale: 2.0,
             focal_length: 1.0,
+            hittables: vec![],
         }
     }
 
-    pub fn render(&self, image_size: Size) -> Bitmap {
+    pub fn add(&mut self, hittable: Box<dyn Hittable>) {
+        self.hittables.push(hittable)
+    }
+
+    pub fn render(self, image_size: Size) -> Bitmap {
         let mut bitmap = Bitmap::new(image_size);
 
         let viewport_height = self.viewport_scale;
@@ -33,7 +41,7 @@ impl Raytracer {
                 let v = (j as f64) / (bitmap.height() as f64 - 1.0);
 
                 let ray = Ray::new(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-                let color = self.bg_color(&ray);
+                let color = self.project(&ray);
                 bitmap.set(i, j, color)
             }
         }
@@ -42,13 +50,20 @@ impl Raytracer {
         bitmap
     }
 
+    fn project(&self, ray: &Ray) -> Color {
+        for hittable in self.hittables.iter() {
+            if let Some(hit_record) = hittable.hit(ray, 0.0, std::f64::INFINITY) {
+                let n = hit_record.normal.as_unit();
+                return 0.5*Color::new(n.x()+1.0, n.y()+1.0, n.z()+1.0);
+            }
+        }
+        self.bg_color(ray)
+    }
+
     fn bg_color(&self, ray: &Ray) -> Color {
         let unit_direction = (ray.direction).as_unit();
         let t = 0.5 * (unit_direction.y() + 1.0);
-        // Color::new(1.0, 1.0, 1.0).lerp(t, Color::new(0.5, 0.7, 1.0))
-        let rv = Color::new(1.0, 1.0, 1.0).lerp(t, Color::new(0.5, 0.7, 1.0));
-        // Color::new(1.0, 1.0, 1.0).lerp(t, Color::new(0.0, 0.0, 0.0))
-        rv
+        Color::new(1.0, 1.0, 1.0).lerp(t, Color::new(0.5, 0.7, 1.0))
     }
 
 }

@@ -1,5 +1,6 @@
 use crate::types::*;
 
+#[derive(Debug)]
 pub struct Ray {
     pub origin: Point3,
     pub direction: Vec3,
@@ -10,7 +11,7 @@ impl Ray {
         Self { origin, direction }
     }
 
-    pub fn at(self, t: f64) -> Point3 {
+    pub fn at(&self, t: f64) -> Point3 {
         self.origin + t * self.direction
     }
 }

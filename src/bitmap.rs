@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::vec::*;
 use anyhow::Result;
 
 // A Bitmap image.
@@ -26,7 +26,7 @@ impl Bitmap {
     pub fn new(size: Size) -> Self {
         Self {
             size,
-            data: vec![Color::ZERO; size.area() as usize]
+            data: vec![Color::ZERO; size.area() as usize],
         }
     }
 
@@ -59,11 +59,21 @@ impl Bitmap {
 
 impl PPM {
     pub fn save(self, bitmap: &Bitmap, target: &mut impl std::io::Write) -> Result<()> {
-        write!(target, "P3\n{} {}\n255\n", bitmap.size.width, bitmap.size.height)?;
+        write!(
+            target,
+            "P3\n{} {}\n255\n",
+            bitmap.size.width, bitmap.size.height
+        )?;
         for y in (0..bitmap.size.height).rev() {
             for x in 0..bitmap.size.width {
                 let color = bitmap.get(x, y);
-                write!(target, "{} {} {}\n", Self::to_256(color.r()), Self::to_256(color.g()), Self::to_256(color.b()))?;
+                write!(
+                    target,
+                    "{} {} {}\n",
+                    Self::to_256(color.r()),
+                    Self::to_256(color.g()),
+                    Self::to_256(color.b())
+                )?;
             }
         }
 
@@ -72,6 +82,6 @@ impl PPM {
 
     #[inline]
     fn to_256(v: f64) -> i64 {
-        (255.999 * v).floor() as i64
+        (256.0 * v.clamp(0.0, 0.999)).floor() as i64
     }
 }

@@ -1,8 +1,9 @@
-use crate::types::*;
+use crate::vec::*;
 
 #[derive(Debug)]
 pub struct Ray {
     pub origin: Point3,
+    // ray direction need not be normal
     pub direction: Vec3,
 }
 

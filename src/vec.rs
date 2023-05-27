@@ -49,6 +49,10 @@ impl Vec3 {
         self.length_sq().sqrt()
     }
 
+    pub fn sqrt(self) -> Self {
+        Self(self.0.sqrt(), self.1.sqrt(), self.2.sqrt())
+    }
+
     pub fn dot(self, rhs: Self) -> f64 {
         self.0 * rhs.0 + self.1 * rhs.1 + self.2 * rhs.2
     }
@@ -61,6 +65,17 @@ impl Vec3 {
         )
     }
 
+    pub fn reflect(self, normal: Self) -> Self {
+        self - 2.0 * self.dot(normal) * normal
+    }
+
+    pub fn refract(self, normal: Self, refraction_index_ratio: f64) -> Self {
+        let cosine = (-self).dot(normal).min(1.0);
+        let r_out_perp = refraction_index_ratio * (self + cosine * normal);
+        let r_out_parallel = -((1.0 - r_out_perp.length_sq()).abs().sqrt()) * normal;
+        r_out_perp + r_out_parallel
+    }
+
     pub fn as_unit(self) -> Self {
         self / self.length()
     }
@@ -69,6 +84,32 @@ impl Vec3 {
         (1.0 - t) * self + (t * rhs)
     }
 
+    pub fn is_near_zero(self) -> bool {
+        const EPSILON: f64 = 1e-8;
+        self.0.abs() < EPSILON && self.1.abs() < EPSILON && self.2.abs() < EPSILON
+    }
+
+    pub fn random_range<R: rand::Rng + ?Sized>(rng: &mut R, range: std::ops::Range<f64>) -> Self {
+        Vec3(
+            rng.gen_range(range.clone()),
+            rng.gen_range(range.clone()),
+            rng.gen_range(range.clone()),
+        )
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        let mut rng = rand::thread_rng();
+        loop {
+            let point = Self::random_range(&mut rng, -1.0..1.0);
+            if point.length_sq() < 1.0 {
+                return point;
+            }
+        }
+    }
+
+    pub fn random_unit_vector() -> Self {
+        Self::random_in_unit_sphere().as_unit()
+    }
 }
 
 impl std::ops::Add<Vec3> for Vec3 {
@@ -99,6 +140,19 @@ impl std::ops::SubAssign<Vec3> for Vec3 {
     }
 }
 
+impl std::ops::Mul<Vec3> for Vec3 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0, self.1 * rhs.1, self.2 * rhs.2)
+    }
+}
+
+impl std::ops::MulAssign<Vec3> for Vec3 {
+    fn mul_assign(&mut self, rhs: Vec3) {
+        *self = *self * rhs;
+    }
+}
 
 impl std::ops::Mul<f64> for Vec3 {
     type Output = Self;
@@ -108,7 +162,6 @@ impl std::ops::Mul<f64> for Vec3 {
     }
 }
 
-
 impl std::ops::Mul<Vec3> for f64 {
     type Output = Vec3;
 
@@ -117,13 +170,11 @@ impl std::ops::Mul<Vec3> for f64 {
     }
 }
 
-
 impl std::ops::MulAssign<f64> for Vec3 {
     fn mul_assign(&mut self, rhs: f64) {
         *self = *self * rhs;
     }
 }
-
 
 impl std::ops::Div<f64> for Vec3 {
     type Output = Self;
@@ -139,7 +190,6 @@ impl std::ops::DivAssign<f64> for Vec3 {
     }
 }
 
-
 impl std::ops::Neg for Vec3 {
     type Output = Self;
 
@@ -148,6 +198,21 @@ impl std::ops::Neg for Vec3 {
     }
 }
 
+impl std::iter::Sum for Vec3 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut final_vec = Self::ZERO;
+        for item in iter.into_iter() {
+            final_vec += item;
+        }
+        final_vec
+    }
+}
+
+impl rand::distributions::Distribution<Vec3> for rand::distributions::Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Vec3 {
+        Vec3(rng.gen(), rng.gen(), rng.gen())
+    }
+}
 
 impl Size {
     pub fn new(width: u32, height: u32) -> Self {

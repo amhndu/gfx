@@ -14,12 +14,17 @@ pub struct Raytracer {
 
 pub struct Config {
     // camera config
-    vertical_fov: f64,
-    viewport_scale: f64,
-    focal_length: f64,
+    pub lookfrom: Point3,
+    pub lookto: Point3,
+    pub vup: Vec3,
+    pub vertical_fov: f64,
+    pub viewport_scale: f64,
+    // camera - focus
+    pub focus_dist: f64,
+    pub aperture: f64,
     // renderer config
-    samples_per_pixel: u32,
-    bounce_limit: u32,
+    pub samples_per_pixel: u32,
+    pub bounce_limit: u32,
 }
 
 pub struct Camera {
@@ -27,26 +32,30 @@ pub struct Camera {
     horizontal: Vec3,
     vertical: Vec3,
     lower_left_corner: Vec3,
+    lens_raidus: f64,
+    u: Vec3,
+    v: Vec3,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
+            lookto: Point3::new(0.0, 0.0, -1.0),
+            lookfrom: Point3::new(0.0, 0.0, 0.0),
+            vup: Vec3::new(0.0, 1.0, 0.0),
             vertical_fov: 120.0f64.to_radians(),
             viewport_scale: 2.0,
-            focal_length: 1.0,
             samples_per_pixel: 100,
             bounce_limit: 50,
+            focus_dist: 1.0,
+            aperture: 1.0,
         }
     }
 }
 
 impl Raytracer {
-    pub fn new(world: Rc<dyn Hittable>) -> Self {
-        Self {
-            world,
-            config: Default::default(),
-        }
+    pub fn new(config: Config, world: Rc<dyn Hittable>) -> Self {
+        Self { world, config }
     }
 
     pub fn render(self, image_size: Size) -> Bitmap {
@@ -125,27 +134,36 @@ fn clear_line() -> &'static str {
 
 impl Camera {
     fn new(image_size: Size, config: &Config) -> Self {
-        let viewport_height = config.viewport_scale * (config.vertical_fov / 2.0).tan();
+        let h = (config.vertical_fov / 2.0).tan();
+        let viewport_height = config.viewport_scale * h;
         let viewport_width = image_size.aspect_ratio() * viewport_height;
 
-        let origin = Point3::ZERO;
-        let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, viewport_height, 0.0);
-        let lower_left_corner =
-            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, config.focal_length);
+        let origin = config.lookfrom;
+        assert!(config.vup.length_sq() == 1.0);
+        let w = (config.lookfrom - config.lookto).as_unit();
+        let u = config.vup.cross(w).as_unit();
+        let v = w.cross(u);
+        let horizontal = u * config.focus_dist * viewport_width;
+        let vertical = v * config.focus_dist * viewport_height;
+        let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - w * config.focus_dist;
 
         Self {
             origin,
             horizontal,
             vertical,
             lower_left_corner,
+            lens_raidus: config.aperture / 2.0,
+            u,
+            v,
         }
     }
 
-    fn ray_at(&self, u: f64, v: f64) -> Ray {
+    fn ray_at(&self, s: f64, t: f64) -> Ray {
+        let rd = self.lens_raidus * Vec3::random_in_unit_disk();
+        let offset = self.u * rd.x() + self.v * rd.y();
         Ray::new(
-            self.origin,
-            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            self.origin + offset,
+            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
         )
     }
 }

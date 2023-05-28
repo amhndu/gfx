@@ -1,3 +1,5 @@
+use rand::Rng;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3(f64, f64, f64);
 
@@ -13,8 +15,8 @@ pub struct Size {
 impl Vec3 {
     pub const ZERO: Vec3 = Vec3(0.0, 0.0, 0.0);
 
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Self(x, y, z)
+    pub fn new(x: impl Into<f64>, y: impl Into<f64>, z: impl Into<f64>) -> Self {
+        Self(x.into(), y.into(), z.into())
     }
 
     pub fn x(self) -> f64 {
@@ -100,7 +102,7 @@ impl Vec3 {
     pub fn random_in_unit_sphere() -> Self {
         let mut rng = rand::thread_rng();
         loop {
-            let point = Self::random_range(&mut rng, -1.0..1.0);
+            let point = Vec3(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0);
             if point.length_sq() < 1.0 {
                 return point;
             }
@@ -109,6 +111,16 @@ impl Vec3 {
 
     pub fn random_unit_vector() -> Self {
         Self::random_in_unit_sphere().as_unit()
+    }
+
+    pub fn random_in_unit_disk() -> Self {
+        let mut rng = rand::thread_rng();
+        loop {
+            let point = Self::random_range(&mut rng, -1.0..1.0);
+            if point.length_sq() < 1.0 {
+                return point;
+            }
+        }
     }
 }
 
@@ -217,6 +229,13 @@ impl rand::distributions::Distribution<Vec3> for rand::distributions::Standard {
 impl Size {
     pub fn new(width: u32, height: u32) -> Self {
         Self { width, height }
+    }
+
+    pub fn from_aspect_ratio(width: u32, aspect_ratio: f64) -> Self {
+        Self {
+            width,
+            height: (width as f64 / aspect_ratio) as u32,
+        }
     }
 
     pub fn area(self) -> u32 {

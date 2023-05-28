@@ -1,8 +1,5 @@
-[package]
-name = "ray"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-[dependencies]
-anyhow = "1.0.71"
-rand = "0.8.5"
+members = [
+    "ray",
+]
